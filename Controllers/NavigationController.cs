@@ -20,7 +20,7 @@ namespace SAEBRecommender.Controllers
             if (string.IsNullOrEmpty(currentUrl) || !Uri.TryCreate(currentUrl, UriKind.Absolute, out validatedUri)) return BadRequest(nameof(currentUrl));
             
             var siteDetails = new SiteDetails { Url = currentUrl };
-            siteDetails.LoadTitle();
+            siteDetails.LoadDetails();
 
             return Ok(siteDetails);
         }
