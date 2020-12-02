@@ -1,5 +1,3 @@
-using System;
-// using System.Collections.Generic;
 using System.Net;
 using System.Text.RegularExpressions;
 using HtmlAgilityPack;
@@ -13,20 +11,39 @@ namespace SAEBRecommender.Models
         public string Description { get; set; }
         public string[] Keywords { get; set; }
 
-        protected internal void LoadTitle()
-        {            
-            var webClient = new WebClient();
-            var urlSource = webClient.DownloadString(Url);
-            Title = Regex.Match(urlSource, @"\<title\b[^>]*\>\s*(?<Title>[\s\S]*?)\</title\>",
-                RegexOptions.IgnoreCase).Groups["Title"].Value;                
-        }
-
         protected internal void LoadDetails()
         {
-            var web = new HtmlWeb();
-            var siteDoc = web.Load(Url);
-            Title = siteDoc.DocumentNode.SelectSingleNode("//head/title");
-            Description = siteDoc.DocumentNode.SelectNodes("//head/meta");
+            var siteDoc = new HtmlWeb().Load(Url);
+            Title = ExtractNodeText(siteDoc, "//head/title");
+            Description = ExtractNodeText(siteDoc, "//head/meta[@name='description']", "content");
+            var keys = ExtractNodeText(siteDoc, "//head/meta[@name='keywords']", "content");
+            if (keys != null)
+                Keywords = keys.Split(new char[] { ',', ';' });
+        }
+
+        private static string ExtractNodeText(HtmlDocument doc, string xPath, string attribute = "")
+        {
+            string nodeText = null;
+            if (doc != null)
+            {
+                var node = doc.DocumentNode.SelectSingleNode(xPath);
+                if (node != null)
+                {
+                    if (string.IsNullOrWhiteSpace(attribute))
+                    {
+                        nodeText = node.InnerText;
+                    }
+                    else
+                    {
+                        var att = node.Attributes[attribute];
+                        if (att != null)
+                        {
+                            nodeText = att.Value;
+                        }
+                    }
+                }
+            }
+            return nodeText;
         }
     }
 }

@@ -14,10 +14,11 @@ namespace SAEBRecommender.Controllers
     public class NavigationController : ControllerBase
     {
         [HttpGet(nameof(NextBest))]
-        public async Task<ActionResult<string>> NextBest(string currentUrl)
+        public ActionResult<string> NextBest(string currentUrl)
         {
-            Uri validatedUri;
-            if (string.IsNullOrEmpty(currentUrl) || !Uri.TryCreate(currentUrl, UriKind.Absolute, out validatedUri)) return BadRequest(nameof(currentUrl));
+            if (string.IsNullOrEmpty(currentUrl) 
+                || !Uri.TryCreate(currentUrl, UriKind.Absolute, out _)) 
+                return BadRequest(nameof(currentUrl));
             
             var siteDetails = new SiteDetails { Url = currentUrl };
             siteDetails.LoadDetails();
