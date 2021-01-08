@@ -24,7 +24,7 @@ namespace SAEBRecommender.Resources.AdobeAnalytics
             client.BaseAddress = new Uri(settings.AABaseAuthUrl);
             client.DefaultRequestHeaders.Accept.Clear();
             client.DefaultRequestHeaders.Accept.Add(
-                new MediaTypeWithQualityHeaderValue("application/json"));
+                new MediaTypeWithQualityHeaderValue(settings.AuthenticationRequestHeaderType));
             this.client = client;
         }
 
@@ -34,7 +34,7 @@ namespace SAEBRecommender.Resources.AdobeAnalytics
             var request = new AAAuthenticationRequest
             {
                 Client_id = settings.ClientId,
-                Client_secret = settings.AASecret,
+                Client_secret = settings.ClientSecret,
                 Jwt_token = JwtToken
             };
 
@@ -45,7 +45,7 @@ namespace SAEBRecommender.Resources.AdobeAnalytics
 
         private void GenerateJwtToken()
         {
-            var securityKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(settings.AASecret));
+            var securityKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(settings.ClientSecret));
             var tokenHandler = new JwtSecurityTokenHandler();
             var tokenDescriptor = new SecurityTokenDescriptor
             {
@@ -53,7 +53,7 @@ namespace SAEBRecommender.Resources.AdobeAnalytics
                 {
                     new Claim(ClaimTypes.NameIdentifier, settings.ClientId),
                 }),
-                Expires = DateTime.UtcNow.AddDays(7),
+                Expires = DateTime.UtcNow.AddDays(settings.ExpiryDays),
                 Issuer = settings.Issuer,
                 Audience = settings.Audience,
                 SigningCredentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256Signature)
@@ -65,7 +65,7 @@ namespace SAEBRecommender.Resources.AdobeAnalytics
 
         private bool ValidateCurrentToken()
         {
-            var securityKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(settings.AASecret));
+            var securityKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(settings.ClientSecret));
             var tokenHandler = new JwtSecurityTokenHandler();
             try
             {
