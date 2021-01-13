@@ -1,6 +1,9 @@
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using SAEBRecommender.Models;
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -11,15 +14,15 @@ using System.Threading.Tasks;
 
 namespace SAEBRecommender.Resources.AdobeAnalytics 
 {
-    public class AARequests
+    public class AARequests : IAARequests
     {
-        private readonly AASettings settings;
+        private readonly IAASettings settings;
         private readonly HttpClient client;
         private string JwtToken;
 
-        public AARequests(HttpClient client, AASettings aaSettings)
+        public AARequests(HttpClient client, IOptions<AASettings> aaSettings)
         {
-            settings = aaSettings;
+            settings = aaSettings.Value;
 
             client.BaseAddress = new Uri(settings.AABaseAuthUrl);
             client.DefaultRequestHeaders.Accept.Clear();
@@ -49,15 +52,16 @@ namespace SAEBRecommender.Resources.AdobeAnalytics
             var tokenHandler = new JwtSecurityTokenHandler();
             var tokenDescriptor = new SecurityTokenDescriptor
             {
+                Expires = DateTime.UtcNow.AddDays(settings.ExpiryDays),
+                Issuer = settings.OrganizationId,
                 Subject = new ClaimsIdentity(new Claim[]
                 {
-                    new Claim(ClaimTypes.NameIdentifier, settings.ClientId),
+                    new Claim(ClaimTypes.NameIdentifier, settings.TechnicalAccountId),
                 }),
-                Expires = DateTime.UtcNow.AddDays(settings.ExpiryDays),
-                Issuer = settings.Issuer,
-                Audience = settings.Audience,
+                Audience = settings.ApiKey,
+                AdditionalHeaderClaims = new Dictionary<string, object> {{ settings.Metascope, true }},
                 SigningCredentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256Signature)
-            }; 
+            };
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
             JwtToken = tokenHandler.WriteToken(token);
@@ -74,7 +78,7 @@ namespace SAEBRecommender.Resources.AdobeAnalytics
                     ValidateIssuerSigningKey = true,
                     ValidateIssuer = true,
                     ValidateAudience = true,
-                    ValidIssuer = settings.Issuer,
+                    ValidIssuer = settings.OrganizationId,
                     ValidAudience = settings.Audience,
                     IssuerSigningKey = securityKey
                 }, out SecurityToken validatedToken);

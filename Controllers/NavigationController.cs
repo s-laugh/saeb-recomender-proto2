@@ -10,9 +10,9 @@ namespace SAEBRecommender.Controllers
     [ApiController]
     public class NavigationController : ControllerBase
     {
-        private readonly AARequests aaRequests;
+        private readonly IAARequests aaRequests;
 
-        public NavigationController(AARequests aaRequests)
+        public NavigationController(IAARequests aaRequests)
         {
             this.aaRequests = aaRequests;
         }
