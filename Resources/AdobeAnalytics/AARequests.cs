@@ -1,93 +1,77 @@
 using Microsoft.Extensions.Options;
-using Microsoft.IdentityModel.Tokens;
-using SAEBRecommender.Models;
+using RestSharp;
 using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.IdentityModel.Tokens.Jwt;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Net.Http.Json;
-using System.Security.Claims;
-using System.Text;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 
-namespace SAEBRecommender.Resources.AdobeAnalytics 
+namespace SAEBRecommender.Resources.AdobeAnalytics
 {
     public class AARequests : IAARequests
     {
-        private readonly IAASettings settings;
-        private readonly HttpClient client;
+        private readonly IAAConnectionSettings settings;
         private string JwtToken;
 
-        public AARequests(HttpClient client, IOptions<AASettings> aaSettings)
+        public AARequests(IOptions<AAConnectionSettings> aaSettings)
         {
             settings = aaSettings.Value;
-
-            client.BaseAddress = new Uri(settings.AABaseAuthUrl);
-            client.DefaultRequestHeaders.Accept.Clear();
-            client.DefaultRequestHeaders.Accept.Add(
-                new MediaTypeWithQualityHeaderValue(settings.AuthenticationRequestHeaderType));
-            this.client = client;
         }
 
         public async Task MakeACall_TempAsync()
         {
             GenerateJwtToken();
-            var request = new AAAuthenticationRequest
-            {
-                Client_id = settings.ClientId,
-                Client_secret = settings.ClientSecret,
-                Jwt_token = JwtToken
-            };
-
-            HttpResponseMessage response = await client.PostAsJsonAsync(
-                settings.AAAuthPath, request);
-            response.EnsureSuccessStatusCode();
+            AuthenticatJwtToken();
         }
 
         private void GenerateJwtToken()
         {
-            var securityKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(settings.ClientSecret));
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var tokenDescriptor = new SecurityTokenDescriptor
+            Dictionary<object, object> test = new Dictionary<object, object>
             {
-                Expires = DateTime.UtcNow.AddDays(settings.ExpiryDays),
-                Issuer = settings.OrganizationId,
-                Subject = new ClaimsIdentity(new Claim[]
-                {
-                    new Claim(ClaimTypes.NameIdentifier, settings.TechnicalAccountId),
-                }),
-                Audience = settings.ApiKey,
-                AdditionalHeaderClaims = new Dictionary<string, object> {{ settings.Metascope, true }},
-                SigningCredentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256Signature)
+                { "exp", DateTimeOffset.Now.ToUnixTimeSeconds() + settings.ExpirySeconds },
+                { "iss", settings.OrganizationId },
+                { "sub", settings.TechnicalAccountId },
+                { "aud", settings.Audience + settings.ClientId }
             };
+            string[] scopes = settings.Metascopes.Split(',');
+            foreach(var scope in scopes)
+            {
+                test.Add(scope, true);
+            }
 
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            JwtToken = tokenHandler.WriteToken(token);
-        }
-
-        private bool ValidateCurrentToken()
-        {
-            var securityKey = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(settings.ClientSecret));
-            var tokenHandler = new JwtSecurityTokenHandler();
             try
             {
-                tokenHandler.ValidateToken(JwtToken, new TokenValidationParameters
-                {
-                    ValidateIssuerSigningKey = true,
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidIssuer = settings.OrganizationId,
-                    ValidAudience = settings.Audience,
-                    IssuerSigningKey = securityKey
-                }, out SecurityToken validatedToken);
+                X509Certificate2 cert = new X509Certificate2(settings.PfxPath, settings.PfxKeyPass);
+                JwtToken = Jose.JWT.Encode(test, cert.GetRSAPrivateKey(), Jose.JwsAlgorithm.RS256);
             }
             catch
             {
-                return false;
+                throw;
             }
-            return true;
+        }
+
+        private void AuthenticatJwtToken()
+        {
+            try
+            {
+                var client = new RestClient(settings.AABaseAuthUrl + settings.AAAuthPath);
+
+                var request = new RestRequest(Method.POST);
+
+                request.AddHeader("cache-control", "no-cache");
+                request.AddHeader("content-type", "multipart/form-data; boundary=----boundary");
+                request.AddParameter("multipart/form-data; boundary=----boundary",
+                    "------boundary\r\nContent-Disposition: form-data; name=\"client_id\"\r\n\r\n" + settings.ClientId +
+                    "\r\n------boundary\r\nContent-Disposition: form-data; name=\"client_secret\"\r\n\r\n" + settings.ClientSecret +
+                    "\r\n------boundary\r\nContent-Disposition: form-data; name=\"jwt_token\"\r\n\r\n" + JwtToken +
+                    "\r\n------boundary--", ParameterType.RequestBody);
+
+                IRestResponse response = client.Execute(request);
+                _ = response.Content;
+            }
+            catch
+            {
+                throw;
+            }
         }
     }
 }

@@ -27,11 +27,11 @@ namespace SAEBRecommender
             });
 
             //extract configurations
-            services.Configure<AASettings>(Configuration.GetSection("AdobeAnalyticsConnection"));
+            services.Configure<AAConnectionSettings>(Configuration.GetSection("AdobeAnalyticsConnection"));
 
             //set injection definitions
-            services.AddHttpClient<IAARequests, AARequests>();
-            services.AddSingleton<IAASettings, AASettings>();
+            services.AddSingleton<IAARequests, AARequests>();
+            services.AddSingleton<IAAConnectionSettings, AAConnectionSettings>();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.

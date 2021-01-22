@@ -1,19 +1,17 @@
-﻿using System.Security.Claims;
-
-namespace SAEBRecommender.Resources.AdobeAnalytics
+﻿namespace SAEBRecommender.Resources.AdobeAnalytics
 {
-    public interface IAASettings
+    public interface IAAConnectionSettings
     {
         string AAAuthPath { get; set; }
         string AABaseAuthUrl { get; set; }
         string Audience { get; set; }
-        string AuthenticationRequestHeaderType { get; set; }
         string ClientId { get; set; }
         string ClientSecret { get; set; }
-        int ExpiryDays { get; set; }
+        int ExpirySeconds { get; set; }
         string OrganizationId { get; set; }
-        string Metascope { get; set; }
+        string Metascopes { get; set; }
         string TechnicalAccountId { get; set; }
-        string ApiKey { get; set; }
+        string PfxPath { get; set; }
+        string PfxKeyPass { get; set; }
     }
 }
