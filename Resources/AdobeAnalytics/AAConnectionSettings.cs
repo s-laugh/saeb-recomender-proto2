@@ -13,5 +13,6 @@
         public string AAAuthPath { get; set; }
         public string PfxPath { get; set; }
         public string PfxKeyPass { get; set; }
+        public string APIBasePath { get; set; }
     }
 }

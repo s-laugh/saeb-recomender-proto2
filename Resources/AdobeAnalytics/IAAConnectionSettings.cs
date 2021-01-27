@@ -13,5 +13,6 @@
         string TechnicalAccountId { get; set; }
         string PfxPath { get; set; }
         string PfxKeyPass { get; set; }
+        string APIBasePath { get; set; }
     }
 }
