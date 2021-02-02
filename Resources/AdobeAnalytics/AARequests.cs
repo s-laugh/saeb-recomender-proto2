@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Options;
+using Newtonsoft.Json.Linq;
 using RestSharp;
 using System;
 using System.Collections.Generic;
@@ -59,7 +60,8 @@ namespace SAEBRecommender.Resources.AdobeAnalytics
                     "\r\n------boundary--", ParameterType.RequestBody);
 
                 IRestResponse response = client.Execute(request);
-                AuthenticatedJwtToken = response.Content;
+                dynamic tokenDetails = JObject.Parse(response.Content);
+                AuthenticatedJwtToken = tokenDetails.access_token;
             }
             catch
             {
